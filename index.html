@@ -15,6 +15,12 @@
             --table-row-even: #f8f9fa;
             --table-row-hover: #e8f4fc;
             --total-users-bg: linear-gradient(to right, #3498db, #2c3e50);
+            --status-busy: #e74c3c;
+            --status-online: #2ecc71;
+            --status-offline: #95a5a6;
+            --status-full: #9b59b6;
+            --user-count-low: #2ecc71;  /* Green for 1-200 users */
+            --user-count-high: #e74c3c; /* Red for 200+ users */
         }
 
         .dark-mode {
@@ -27,6 +33,12 @@
             --table-row-even: #363636;
             --table-row-hover: #3a4a5c;
             --total-users-bg: linear-gradient(to right, #2c3e50, #1a2a3e);
+            --status-busy: #c0392b;
+            --status-online: #27ae60;
+            --status-offline: #7f8c8d;
+            --status-full: #8e44ad;
+            --user-count-low: #27ae60;  /* Green for 1-200 users in dark mode */
+            --user-count-high: #c0392b; /* Red for 200+ users in dark mode */
         }
 
         body {
@@ -105,17 +117,40 @@
             100% { opacity: 0.7; }
         }
         .status-online {
-            background-color: #2ecc71;
-            box-shadow: 0 0 10px #2ecc71;
+            background-color: var(--status-online);
+            box-shadow: 0 0 10px var(--status-online);
         }
         .status-offline {
-            background-color: #e74c3c;
-            box-shadow: 0 0 10px #e74c3c;
+            background-color: var(--status-offline);
+            box-shadow: 0 0 10px var(--status-offline);
+        }
+        .status-busy {
+            background-color: var(--status-busy);
+            box-shadow: 0 0 10px var(--status-busy);
+            animation: pulse-fast 1s infinite;
+        }
+        .status-full {
+            background-color: var(--status-full);
+            box-shadow: 0 0 10px var(--status-full);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse-fast {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
         }
         .online-count {
-            color: #2ecc71;
             font-weight: bold;
             font-size: 1.1em;
+        }
+        .count-normal {
+            color: var(--status-online);
+        }
+        .count-busy {
+            color: var(--status-busy);
+        }
+        .count-full {
+            color: var(--status-full);
         }
         .ping-time {
             font-size: 0.95em;
@@ -227,6 +262,77 @@
         .retry-btn:hover {
             background-color: #2980b9;
         }
+        .server-limit-info {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+        }
+        .dark-mode .server-limit-info {
+            background: linear-gradient(to right, #2d2d2d, #363636);
+            color: #b8b8b8;
+            border-color: #444;
+        }
+        
+        /* Progress Bar Styles */
+        .progress-container {
+            width: 100%;
+            margin-top: 8px;
+        }
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+        .progress-text {
+            font-weight: 600;
+        }
+        .progress-percentage {
+            font-weight: bold;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .dark-mode .progress-bar {
+            background-color: #444;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        .progress-low {
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+        }
+        .progress-medium {
+            background: linear-gradient(to right, #f1c40f, #f39c12);
+        }
+        .progress-high {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+        }
+        .progress-full {
+            background: linear-gradient(to right, #9b59b6, #8e44ad);
+        }
+        
+        /* User count styling */
+        .user-count-low {
+            color: var(--user-count-low);
+            font-weight: bold;
+        }
+        .user-count-high {
+            color: var(--user-count-high);
+            font-weight: bold;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -265,6 +371,10 @@
                 height: 45px;
                 font-size: 1.3rem;
             }
+            .progress-info {
+                flex-direction: column;
+                gap: 3px;
+            }
         }
     </style>
 </head>
@@ -272,6 +382,7 @@
     <div class="container">
         <h1>🌐 Servers List: Online Users</h1>
         <div class="refresh-info">🖥️ လူသုံးနည်းတဲ့ဆာဗာတွေရွေးချယ်ပြီးသုံးပါ</div>
+        <div class="server-limit-info">📊 Each server has a limit of 250 users. Servers at capacity will show as <span style="color: var(--status-full); font-weight: bold;">FULL</span>.</div>
         
         <table id="serverTable">
             <tr>
@@ -306,6 +417,9 @@
             { id: 'th-04', name: 'TH-09', url: 'http://sh09.saeng.shop:82/server/online' },
             { id: 'th-04', name: 'TH-10', url: 'http://sh10.saeng.shop:82/server/online' },
         ];
+
+        // Server user limit
+        const SERVER_USER_LIMIT = 250;
 
         // 7 Days 7 Colors for background gradient
         const dayColors = {
@@ -346,6 +460,35 @@
             if (pingTime <= 100) return 'ping-good';
             if (pingTime <= 300) return 'ping-medium';
             return 'ping-bad';
+        }
+
+        // Function to determine status based on user count
+        function getServerStatus(onlineCount) {
+            if (onlineCount === 0) {
+                return { status: 'Offline', class: 'status-offline' };
+            } else if (onlineCount < SERVER_USER_LIMIT) {
+                return { status: 'Online', class: 'status-online' };
+            } else if (onlineCount >= SERVER_USER_LIMIT) {
+                return { status: 'Full', class: 'status-full' };
+            } else {
+                return { status: 'Busy', class: 'status-busy' };
+            }
+        }
+
+        // Function to get user count class (NEW: color based on count)
+        function getUserCountClass(onlineCount) {
+            if (onlineCount === 0) return 'count-offline';
+            if (onlineCount <= 200) return 'user-count-low';  // Green for 1-200
+            if (onlineCount < SERVER_USER_LIMIT) return 'user-count-high';  // Red for 200+
+            return 'count-full';
+        }
+
+        // Function to get progress bar class based on percentage
+        function getProgressBarClass(percentage) {
+            if (percentage < 50) return 'progress-low';
+            if (percentage < 80) return 'progress-medium';
+            if (percentage < 100) return 'progress-high';
+            return 'progress-full';
         }
 
         // Function to set daily background color based on day of week
@@ -421,18 +564,40 @@
                     const response = await fetchWithCorsProxy(server.url);
                     
                     const responseText = await response.text();
-                    const onlineCount = parseInt(responseText, 10);
+                    let onlineCount = parseInt(responseText, 10);
+                    
+                    // Apply server limit
+                    if (onlineCount > SERVER_USER_LIMIT) {
+                        onlineCount = SERVER_USER_LIMIT;
+                    }
+                    
                     const pingTime = Date.now() - startTime;
                     
                     if (!isNaN(onlineCount)) {
                         totalOnlineCount += onlineCount;
                         
                         const pingClass = getPingClass(pingTime);
+                        const statusInfo = getServerStatus(onlineCount);
+                        const countClass = getUserCountClass(onlineCount);
+                        
+                        // Calculate percentage for progress bar
+                        const percentage = Math.min(100, Math.round((onlineCount / SERVER_USER_LIMIT) * 100));
+                        const progressBarClass = getProgressBarClass(percentage);
                         
                         row.innerHTML = `
-                            <td><span class="status-indicator status-online"></span>Online</td>
+                            <td><span class="status-indicator ${statusInfo.class}"></span>${statusInfo.status}</td>
                             <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
-                            <td>Active : <span class="online-count">${onlineCount}</span> Users</td>
+                            <td>
+                                <div class="progress-info">
+                                    <span class="progress-text ${countClass}">Connected: ${onlineCount}/${SERVER_USER_LIMIT}</span>
+                                    <span class="progress-percentage">${percentage}%</span>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill ${progressBarClass}" style="width: ${percentage}%"></div>
+                                    </div>
+                                </div>
+                            </td>
                             <td><span class="ping-time ${pingClass}">${pingTime} ms</span></td>
                         `;
                     } else {
@@ -526,7 +691,13 @@
                         const response = await fetchWithCorsProxy(server.url);
                         
                         const responseText = await response.text();
-                        const onlineCount = parseInt(responseText, 10);
+                        let onlineCount = parseInt(responseText, 10);
+                        
+                        // Apply server limit
+                        if (onlineCount > SERVER_USER_LIMIT) {
+                            onlineCount = SERVER_USER_LIMIT;
+                        }
+                        
                         const pingTime = Date.now() - startTime;
                         
                         if (!isNaN(onlineCount)) {
@@ -536,11 +707,27 @@
                             totalOnlineCountElement.textContent = currentTotal + onlineCount;
                             
                             const pingClass = getPingClass(pingTime);
+                            const statusInfo = getServerStatus(onlineCount);
+                            const countClass = getUserCountClass(onlineCount);
+                            
+                            // Calculate percentage for progress bar
+                            const percentage = Math.min(100, Math.round((onlineCount / SERVER_USER_LIMIT) * 100));
+                            const progressBarClass = getProgressBarClass(percentage);
                             
                             row.innerHTML = `
-                                <td><span class="status-indicator status-online"></span>Online</td>
+                                <td><span class="status-indicator ${statusInfo.class}"></span>${statusInfo.status}</td>
                                 <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
-                                <td>Active : <span class="online-count">${onlineCount}</span> Users</td>
+                                <td>
+                                    <div class="progress-info">
+                                        <span class="progress-text ${countClass}">Connected: ${onlineCount}/${SERVER_USER_LIMIT}</span>
+                                        <span class="progress-percentage">${percentage}%</span>
+                                    </div>
+                                    <div class="progress-container">
+                                        <div class="progress-bar">
+                                            <div class="progress-fill ${progressBarClass}" style="width: ${percentage}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td><span class="ping-time ${pingClass}">${pingTime} ms</span></td>
                             `;
                         } else {
@@ -610,5 +797,4 @@
         }, 60000); // Check every minute if it's midnight
     </script>
 </body>
-
 </html>

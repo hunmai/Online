@@ -3,259 +3,803 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureVPN</title>
+    <title>Online Users Status List</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #fff;
+            --text-primary: #333;
+            --text-secondary: #2c3e50;
+            --border-color: #e0e0e0;
+            --table-header-bg: linear-gradient(to bottom, #3498db, #2980b9);
+            --table-row-even: #f8f9fa;
+            --table-row-hover: #e8f4fc;
+            --total-users-bg: linear-gradient(to right, #3498db, #2c3e50);
+            --status-busy: #e74c3c;
+            --status-online: #2ecc71;
+            --status-offline: #95a5a6;
+            --status-full: #9b59b6;
+            --user-count-low: #2ecc71;  /* Green for 1-200 users */
+            --user-count-high: #e74c3c; /* Red for 200+ users */
         }
-        
+
+        .dark-mode {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #e0e0e0;
+            --text-secondary: #f0f0f0;
+            --border-color: #444;
+            --table-header-bg: linear-gradient(to bottom, #2c3e50, #1a2a3e);
+            --table-row-even: #363636;
+            --table-row-hover: #3a4a5c;
+            --total-users-bg: linear-gradient(to right, #2c3e50, #1a2a3e);
+            --status-busy: #c0392b;
+            --status-online: #27ae60;
+            --status-offline: #7f8c8d;
+            --status-full: #8e44ad;
+            --user-count-low: #27ae60;  /* Green for 1-200 users in dark mode */
+            --user-count-high: #c0392b; /* Red for 200+ users in dark mode */
+        }
+
         body {
-            background: linear-gradient(135deg, #1a2a6c, #2a3a7c);
-            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            margin: 0;
+            padding: 20px;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            transition: background-color 0.3s, color 0.3s, background-image 1s ease;
+            position: relative;
+            padding-bottom: 70px;
         }
-        
-        /* Header and Navigation */
-        header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 20px;
-            z-index: 1000;
-        }
-        
-        .nav-container {
-            display: flex;
-            justify-content: flex-end;
+        .container {
             max-width: 1200px;
             margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            backdrop-filter: blur(5px);
+            background-color: var(--bg-secondary);
         }
-        
-        .menu-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
+        h1 {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            font-size: 2.2em;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--bg-secondary);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            text-align: left;
+        }
+        th {
+            background: var(--table-header-bg);
             color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        tr:nth-child(even) {
+            background-color: var(--table-row-even);
+        }
+        tr {
+            transition: all 0.2s ease;
+        }
+        tr:hover {
+            background-color: var(--table-row-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        .status-online {
+            background-color: var(--status-online);
+            box-shadow: 0 0 10px var(--status-online);
+        }
+        .status-offline {
+            background-color: var(--status-offline);
+            box-shadow: 0 0 10px var(--status-offline);
+        }
+        .status-busy {
+            background-color: var(--status-busy);
+            box-shadow: 0 0 10px var(--status-busy);
+            animation: pulse-fast 1s infinite;
+        }
+        .status-full {
+            background-color: var(--status-full);
+            box-shadow: 0 0 10px var(--status-full);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse-fast {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        .online-count {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .count-normal {
+            color: var(--status-online);
+        }
+        .count-busy {
+            color: var(--status-busy);
+        }
+        .count-full {
+            color: var(--status-full);
+        }
+        .ping-time {
+            font-size: 0.95em;
+            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        .ping-good {
+            background-color: #e8f6ef;
+            color: #2ecc71;
+        }
+        .ping-medium {
+            background-color: #fef9e7;
+            color: #f1c40f;
+        }
+        .ping-bad {
+            background-color: #fbebee;
+            color: #e74c3c;
+        }
+        .total-users {
+            text-align: center;
+            margin-top: 30px;
+            font-weight: bold;
+            font-size: 1.3em;
+            padding: 20px;
+            background: var(--total-users-bg);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .server-name {
             display: flex;
             align-items: center;
-            gap: 8px;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
+            gap: 12px;
+            font-weight: 600;
         }
-        
-        .menu-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+        .error-message {
+            color: #e74c3c;
+            font-style: italic;
         }
-        
-        .dropdown-menu {
-            position: absolute;
-            top: 60px;
-            right: 20px;
-            background: rgba(30, 40, 100, 0.9);
-            border-radius: 8px;
-            padding: 10px 0;
-            min-width: 200px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            display: none;
-            z-index: 1001;
+        .flag {
+            width: 28px;
+            height: 20px;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            border-radius: 2px;
+            object-fit: cover;
         }
-        
-        .dropdown-menu.active {
-            display: block;
-        }
-        
-        .dropdown-menu a {
-            display: block;
-            padding: 12px 20px;
-            color: white;
-            text-decoration: none;
-            transition: background 0.3s;
-        }
-        
-        .dropdown-menu a:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Main Content */
-        .container {
-            max-width: 500px;
-            width: 100%;
+        .refresh-info {
             text-align: center;
-            margin-top: 80px;
-        }
-        
-        .logo {
-            width: 70px;
-            height: 70px;
-            margin: 0 auto 20px;
-            border-radius: 15px;
+            margin: 15px 0;
+            color: #7f8c8d;
+            font-size: 0.9em;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            gap: 8px;
+        }
+        .last-updated {
+            text-align: right;
+            color: #7f8c8d;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        .theme-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .theme-toggle:hover {
+            transform: scale(1.1) rotate(30deg);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        .copyright {
+            text-align: center;
+            margin-top: 20px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            padding: 10px;
+        }
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .retry-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8em;
+        }
+        .retry-btn:hover {
+            background-color: #2980b9;
+        }
+        .server-limit-info {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+        }
+        .dark-mode .server-limit-info {
+            background: linear-gradient(to right, #2d2d2d, #363636);
+            color: #b8b8b8;
+            border-color: #444;
+        }
+        
+        /* Progress Bar Styles */
+        .progress-container {
+            width: 100%;
+            margin-top: 8px;
+        }
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+        .progress-text {
+            font-weight: 600;
+        }
+        .progress-percentage {
+            font-weight: bold;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
             overflow: hidden;
         }
-        
-        .logo img {
-            width: 100%;
+        .dark-mode .progress-bar {
+            background-color: #444;
+        }
+        .progress-fill {
             height: 100%;
-            object-fit: contain;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        .progress-low {
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+        }
+        .progress-medium {
+            background: linear-gradient(to right, #f1c40f, #f39c12);
+        }
+        .progress-high {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+        }
+        .progress-full {
+            background: linear-gradient(to right, #9b59b6, #8e44ad);
         }
         
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            background: linear-gradient(to right, #4CAF50, #2196F3);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .tagline {
-            font-size: 1.2rem;
-            margin-bottom: 40px;
-            opacity: 0.9;
-            line-height: 1.5;
-        }
-        
-        .download-btn {
-            display: inline-flex;
-            align-items: center;
-            background: #4285F4;
-            color: white;
-            padding: 12px 25px;
-            border-radius: 8px;
-            text-decoration: none;
+        /* User count styling */
+        .user-count-low {
+            color: var(--user-count-low);
             font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(66, 133, 244, 0.3);
+        }
+        .user-count-high {
+            color: var(--user-count-high);
+            font-weight: bold;
         }
         
-        .download-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(66, 133, 244, 0.4);
-        }
-        
-        .playstore-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 10px;
-        }
-        
-        footer {
-            margin-top: 40px;
-            font-size: 0.9rem;
-            opacity: 0.7;
-        }
-        
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            th, td {
+                padding: 12px;
+            }
             h1 {
-                font-size: 2rem;
+                font-size: 1.8em;
             }
-            
-            .tagline {
-                font-size: 1rem;
+            .theme-toggle {
+                bottom: 15px;
+                right: 15px;
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
             }
-            
-            .dropdown-menu {
+        }
+        @media (max-width: 480px) {
+            th, td {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+            .server-name {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            .theme-toggle {
+                bottom: 10px;
                 right: 10px;
-                min-width: 180px;
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+            .progress-info {
+                flex-direction: column;
+                gap: 3px;
             }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="nav-container">
-            <button class="menu-btn" id="menuBtn">
-                Menu
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7 10l5 5 5-5z"/>
-                </svg>
-            </button>
-            <div class="dropdown-menu" id="dropdownMenu">
-                <a href="https://all-vpn-app.netlify.app/about.html">About VPN</a>
-                <a href="https://jkapp.site/package">User Online</a>
-                <a href="https://all-vpn-app.netlify.app/package.html">Package ဝယ်နည်းများ</a>
-            </div>
-        </div>
-    </header>
-    
     <div class="container">
-        <div class="logo">
-            <img src="https://my-app-icon.netlify.app/icon_pukang.png" alt="VPN Logo">
-        </div>
-        <h1>PUKANG VPN</h1>
-        <a href="https://play.google.com/store/apps/details?id=com.pukangvpn.th" class="download-btn">
-            <img src="https://raw.githubusercontent.com/kindvpn/JK/main/logo/playstore.png" class="playstore-icon" alt="Google Play">
-            Download on Google Play
-        </a>
+        <h1>🌐 Servers List: Online Users</h1>
+        <div class="refresh-info">🖥️ လူသုံးနည်းတဲ့ဆာဗာတွေရွေးချယ်ပြီးသုံးပါ</div>
+        <div class="server-limit-info">📊 Each server has a limit of 250 users. Servers at capacity will show as <span style="color: var(--status-full); font-weight: bold;">FULL</span>.</div>
+        
+        <table id="serverTable">
+            <tr>
+                <th>Server Status</th>
+                <th>Server Name</th>
+                <th>Online Users</th>
+                <th>Ping</th>
+            </tr>
+            <tr>
+                <td colspan="4" style="text-align: center;">Loading server data...</td>
+            </tr>
+        </table>
+        
+        <div class="total-users">Total Online Active: <span class="online-count" id="totalOnlineCount">0</span> Users</div>
+        <div class="last-updated" id="lastUpdated">Last updated: </div>
+        <div class="copyright">© 2023 Server Status Monitor. All rights reserved.</div>
     </div>
-    
-    <div class="container">
-        <div class="logo">
-            <img src="https://my-app-icon.netlify.app/icon_kham.png" alt="VPN Logo">
-        </div>
-        <h1>KHAM VPN</h1>
-        <a href="https://play.google.com/store/apps/details?id=com.khamvpn.net" class="download-btn">
-            <img src="https://raw.githubusercontent.com/kindvpn/JK/main/logo/playstore.png" class="playstore-icon" alt="Google Play">
-            Download on Google Play
-        </a>
-    </div>
-    
-    <div class="container">
-        <div class="logo">
-            <img src="https://my-app-icon.netlify.app/icon_shan.png" alt="VPN Logo">
-        </div>
-        <h1>SHAN VPN</h1>
-        <a href="https://play.google.com/store/apps/details?id=com.shanvpn.vpnth" class="download-btn">
-            <img src="https://raw.githubusercontent.com/kindvpn/JK/main/logo/playstore.png" class="playstore-icon" alt="Google Play">
-            Download on Google Play
-        </a>
-    </div>
-    
-    <div class="container">
-        <div class="logo">
-            <img src="https://my-app-icon.netlify.app/icon_kakhanga.png" alt="VPN Logo">
-        </div>
-        <h1>KaKhaNga VPN</h1>
-        <a href="https://play.google.com/store/apps/details?id=com.kakhangavpn.net" class="download-btn">
-            <img src="https://raw.githubusercontent.com/kindvpn/JK/main/logo/playstore.png" class="playstore-icon" alt="Google Play">
-            Download on Google Play
-        </a>
-    </div>
-    
-    
-    <footer>
-            <p>© 2025 VPN. All rights reserved.</p>
-        </footer>
+
+    <button class="theme-toggle" id="themeToggle">🌙</button>
 
     <script>
-        // Toggle dropdown menu
-        document.getElementById('menuBtn').addEventListener('click', function() {
-            document.getElementById('dropdownMenu').classList.toggle('active');
+        // Server list with names and URLs
+        const servers = [
+            { id: 'th-01', name: 'TH-01', url: 'http://mt01.mt-group.shop:82/server/online' },
+            { id: 'th-02', name: 'TH-02', url: 'http://mt02.mt-group.shop:82/server/online' },
+            { id: 'th-03', name: 'TH-03', url: 'http://mt02.mt-group.shop:82/server/online' },
+            { id: 'th-04', name: 'TH-04', url: 'http://mt04.mt-group.shop:82/server/online' },
+            { id: 'th-05', name: 'TH-05', url: 'http://mt05.mt-group.shop:82/server/online' },
+            { id: 'th-06', name: 'TH-06', url: 'http://mt06.mt-group.shop:82/server/online' },
+            { id: 'th-07', name: 'TH-07', url: 'http://mt07.mt-group.shop:82/server/online' },
+            { id: 'th-08', name: 'TH-08', url: 'http://mt08.mt-group.shop:82/server/online' },
+            { id: 'th-09', name: 'TH-09', url: 'http://mt09.mt-group.shop:82/server/online' },
+            { id: 'th-10', name: 'TH-10', url: 'http://mt10.mt-group.shop:82/server/online' },
+            { id: 'th-11', name: 'TH-11', url: 'http://mt11.mt-group.shop:82/server/online' },
+            { id: 'th-12', name: 'TH-12', url: 'http://mt12.mt-group.shop:82/server/online' },
+            { id: 'th-13', name: 'TH-13', url: 'http://mt13.mt-group.shop:82/server/online' },
+            { id: 'th-14', name: 'TH-14', url: 'http://mt14.mt-group.shop:82/server/online' },
+            
+        ];
+
+        // Server user limit
+        const SERVER_USER_LIMIT = 250;
+
+        // 7 Days 7 Colors for background gradient
+        const dayColors = {
+            0: ['#1a2a6c', '#b21f1f', '#fdbb2d'], // Sunday - Red
+            1: ['#000046', '#1CB5E0', '#000046'], // Monday - Light Blue
+            2: ['#3a1c71', '#d76d77', '#ffaf7b'], // Tuesday - Purple/Pink
+            3: ['#00416A', '#E4E5E6', '#00416A'], // Wednesday - Blue/Gray
+            4: ['#2C3E50', '#4CA1AF', '#2C3E50'], // Thursday - Blue/Teal
+            5: ['#8E0E00', '#1F1C18', '#8E0E00'], // Friday - Dark Red
+            6: ['#348F50', '#56B4D3', '#348F50']  // Saturday - Green/Blue
+        };
+
+        // List of CORS proxies to try (fallback options)
+        const corsProxies = [
+            url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            url => `https://corsproxy.org/?${encodeURIComponent(url)}`,
+            url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+            url => `https://cors-anywhere.herokuapp.com/${url}`
+        ];
+        
+        // Function to get country code from server name
+        function getCountryCode(serverName) {
+            const parts = serverName.split('-');
+            return parts[0] || '';
+        }
+        
+        // Function to get flag image based on country code
+        function getFlagImage(countryCode) {
+            const code = countryCode.toLowerCase();
+            // Using a different flag API that's more reliable
+            const flagPath = `https://flagcdn.com/w40/${code}.png`;
+            return `<img src="${flagPath}" alt="${code} flag" class="flag" onerror="this.style.display='none'">`;
+        }
+        
+        // Function to determine ping class
+        function getPingClass(pingTime) {
+            if (pingTime <= 100) return 'ping-good';
+            if (pingTime <= 300) return 'ping-medium';
+            return 'ping-bad';
+        }
+
+        // Function to determine status based on user count
+        function getServerStatus(onlineCount) {
+            if (onlineCount === 0) {
+                return { status: 'Offline', class: 'status-offline' };
+            } else if (onlineCount < SERVER_USER_LIMIT) {
+                return { status: 'Online', class: 'status-online' };
+            } else if (onlineCount >= SERVER_USER_LIMIT) {
+                return { status: 'Full', class: 'status-full' };
+            } else {
+                return { status: 'Busy', class: 'status-busy' };
+            }
+        }
+
+        // Function to get user count class (NEW: color based on count)
+        function getUserCountClass(onlineCount) {
+            if (onlineCount === 0) return 'count-offline';
+            if (onlineCount <= 200) return 'user-count-low';  // Green for 1-200
+            if (onlineCount < SERVER_USER_LIMIT) return 'user-count-high';  // Red for 200+
+            return 'count-full';
+        }
+
+        // Function to get progress bar class based on percentage
+        function getProgressBarClass(percentage) {
+            if (percentage < 50) return 'progress-low';
+            if (percentage < 80) return 'progress-medium';
+            if (percentage < 100) return 'progress-high';
+            return 'progress-full';
+        }
+
+        // Function to set daily background color based on day of week
+        function setDailyBackground() {
+            if (document.body.classList.contains('dark-mode')) return;
+            
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            
+            const colors = dayColors[dayOfWeek] || dayColors[0];
+            document.body.style.background = `linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`;
+        }
+
+        // Function to try multiple CORS proxies with fallback
+        async function fetchWithCorsProxy(url, proxyIndex = 0) {
+            if (proxyIndex >= corsProxies.length) {
+                throw new Error('All CORS proxies failed');
+            }
+            
+            const proxyUrl = corsProxies[proxyIndex](url);
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch(proxyUrl, {
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'text/plain'
+                    }
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return response;
+            } catch (error) {
+                console.warn(`CORS proxy ${proxyIndex} failed, trying next one:`, error);
+                return fetchWithCorsProxy(url, proxyIndex + 1);
+            }
+        }
+
+        // Function to update server status
+        async function updateServerStatus() {
+            const table = document.getElementById('serverTable');
+            const totalOnlineCountElement = document.getElementById('totalOnlineCount');
+            const lastUpdatedElement = document.getElementById('lastUpdated');
+            
+            // Clear existing rows except header
+            while (table.rows.length > 1) {
+                table.deleteRow(1);
+            }
+            
+            let totalOnlineCount = 0;
+            const updatePromises = servers.map(async (server) => {
+                // Create row for this server
+                const row = table.insertRow();
+                
+                // Add loading state
+                row.innerHTML = `
+                    <td><span class="status-indicator status-offline"></span>Checking...</td>
+                    <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
+                    <td>Checking server status...</td>
+                    <td><span class="ping-time">-- ms</span></td>
+                `;
+                
+                try {
+                    const startTime = Date.now();
+                    
+                    // Use CORS proxy with fallback
+                    const response = await fetchWithCorsProxy(server.url);
+                    
+                    const responseText = await response.text();
+                    let onlineCount = parseInt(responseText, 10);
+                    
+                    // Apply server limit
+                    if (onlineCount > SERVER_USER_LIMIT) {
+                        onlineCount = SERVER_USER_LIMIT;
+                    }
+                    
+                    const pingTime = Date.now() - startTime;
+                    
+                    if (!isNaN(onlineCount)) {
+                        totalOnlineCount += onlineCount;
+                        
+                        const pingClass = getPingClass(pingTime);
+                        const statusInfo = getServerStatus(onlineCount);
+                        const countClass = getUserCountClass(onlineCount);
+                        
+                        // Calculate percentage for progress bar
+                        const percentage = Math.min(100, Math.round((onlineCount / SERVER_USER_LIMIT) * 100));
+                        const progressBarClass = getProgressBarClass(percentage);
+                        
+                        row.innerHTML = `
+                            <td><span class="status-indicator ${statusInfo.class}"></span>${statusInfo.status}</td>
+                            <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
+                            <td>
+                                <div class="progress-info">
+                                    <span class="progress-text ${countClass}">Connected: ${onlineCount}/${SERVER_USER_LIMIT}</span>
+                                    <span class="progress-percentage">${percentage}%</span>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill ${progressBarClass}" style="width: ${percentage}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="ping-time ${pingClass}">${pingTime} ms</span></td>
+                        `;
+                    } else {
+                        throw new Error('Invalid response from server');
+                    }
+                } catch (error) {
+                    console.error(`Error fetching data for ${server.name}:`, error);
+                    row.innerHTML = `
+                        <td><span class="status-indicator status-offline"></span>Offline</td>
+                        <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
+                        <td class="error-message">Unable to connect to server <button class="retry-btn" onclick="retryServer('${server.id}')">Retry</button></td>
+                        <td><span class="ping-time ping-bad">Error</span></td>
+                    `;
+                }
+            });
+            
+            // Wait for all server checks to complete
+            await Promise.allSettled(updatePromises);
+            
+            // Update total count and timestamp
+            totalOnlineCountElement.textContent = totalOnlineCount;
+            
+            // Set Bangkok timezone
+            const now = new Date();
+            const options = { 
+                timeZone: 'Asia/Bangkok', 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            };
+            const formatter = new Intl.DateTimeFormat('en-US', options);
+            const parts = formatter.formatToParts(now);
+            
+            const formattedDate = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value} ${parts.find(p => p.type === 'hour').value}:${parts.find(p => p.type === 'minute').value}:${parts.find(p => p.type === 'second').value}`;
+            
+            lastUpdatedElement.textContent = `Last updated: ${formattedDate}`;
+        }
+
+        // Function to update only ping times
+        async function updatePingTimes() {
+            const rows = document.getElementById('serverTable').rows;
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const serverNameCell = row.cells[1];
+                const serverName = serverNameCell.querySelector('span').textContent;
+                
+                const server = servers.find(s => s.name === serverName);
+                if (!server) continue;
+                
+                const pingCell = row.cells[3];
+                
+                try {
+                    const startTime = Date.now();
+                    const response = await fetchWithCorsProxy(server.url);
+                    await response.text(); // We don't need the content for ping
+                    const pingTime = Date.now() - startTime;
+                    
+                    const pingClass = getPingClass(pingTime);
+                    pingCell.innerHTML = `<span class="ping-time ${pingClass}">${pingTime} ms</span>`;
+                } catch (error) {
+                    pingCell.innerHTML = '<span class="ping-time ping-bad">Error</span>';
+                }
+            }
+        }
+
+        // Function to retry a specific server
+        async function retryServer(serverId) {
+            const server = servers.find(s => s.id === serverId);
+            if (!server) return;
+            
+            const rows = document.getElementById('serverTable').rows;
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const serverNameCell = row.cells[1];
+                if (serverNameCell.textContent.includes(server.name)) {
+                    row.innerHTML = `
+                        <td><span class="status-indicator status-offline"></span>Retrying...</td>
+                        <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
+                        <td>Checking server status...</td>
+                        <td><span class="ping-time">-- ms</span></td>
+                    `;
+                    
+                    try {
+                        const startTime = Date.now();
+                        
+                        // Use CORS proxy with fallback
+                        const response = await fetchWithCorsProxy(server.url);
+                        
+                        const responseText = await response.text();
+                        let onlineCount = parseInt(responseText, 10);
+                        
+                        // Apply server limit
+                        if (onlineCount > SERVER_USER_LIMIT) {
+                            onlineCount = SERVER_USER_LIMIT;
+                        }
+                        
+                        const pingTime = Date.now() - startTime;
+                        
+                        if (!isNaN(onlineCount)) {
+                            // Update total count
+                            const totalOnlineCountElement = document.getElementById('totalOnlineCount');
+                            const currentTotal = parseInt(totalOnlineCountElement.textContent, 10) || 0;
+                            totalOnlineCountElement.textContent = currentTotal + onlineCount;
+                            
+                            const pingClass = getPingClass(pingTime);
+                            const statusInfo = getServerStatus(onlineCount);
+                            const countClass = getUserCountClass(onlineCount);
+                            
+                            // Calculate percentage for progress bar
+                            const percentage = Math.min(100, Math.round((onlineCount / SERVER_USER_LIMIT) * 100));
+                            const progressBarClass = getProgressBarClass(percentage);
+                            
+                            row.innerHTML = `
+                                <td><span class="status-indicator ${statusInfo.class}"></span>${statusInfo.status}</td>
+                                <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
+                                <td>
+                                    <div class="progress-info">
+                                        <span class="progress-text ${countClass}">Connected: ${onlineCount}/${SERVER_USER_LIMIT}</span>
+                                        <span class="progress-percentage">${percentage}%</span>
+                                    </div>
+                                    <div class="progress-container">
+                                        <div class="progress-bar">
+                                            <div class="progress-fill ${progressBarClass}" style="width: ${percentage}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="ping-time ${pingClass}">${pingTime} ms</span></td>
+                            `;
+                        } else {
+                            throw new Error('Invalid response from server');
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching data for ${server.name}:`, error);
+                        row.innerHTML = `
+                            <td><span class="status-indicator status-offline"></span>Offline</td>
+                            <td class="server-name">${getFlagImage(getCountryCode(server.id))} <span>${server.name}</span></td>
+                            <td class="error-message">Unable to connect to server <button class="retry-btn" onclick="retryServer('${server.id}')">Retry</button></td>
+                            <td><span class="ping-time ping-bad">Error</span></td>
+                        `;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+        
+        // Check for saved theme preference or respect OS preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            body.classList.toggle('dark-mode', savedTheme === 'dark');
+            updateToggleButton();
+        } else {
+            // Default to OS preference if no saved preference
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            body.classList.toggle('dark-mode', prefersDark);
+            localStorage.setItem('theme', prefersDark ? 'dark' : 'light');
+            updateToggleButton();
+        }
+        
+        // Toggle theme on button click
+        themeToggle.addEventListener('click', () => {
+            body.classList.toggle('dark-mode');
+            const isDark = body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateToggleButton();
+            setDailyBackground();
         });
         
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const menuBtn = document.getElementById('menuBtn');
-            const dropdownMenu = document.getElementById('dropdownMenu');
-            
-            if (!menuBtn.contains(event.target) && !dropdownMenu.contains(event.target)) {
-                dropdownMenu.classList.remove('active');
+        // Update toggle button icon
+        function updateToggleButton() {
+            themeToggle.textContent = body.classList.contains('dark-mode') ? '☀️' : '🌙';
+        }
+        
+        // Initial data load
+        updateServerStatus();
+        setDailyBackground();
+        
+        // Update ping times every 5 seconds
+        setInterval(updatePingTimes, 5000);
+        
+        // Update server status every 30 seconds
+        setInterval(updateServerStatus, 30000);
+        
+        // Update background daily at midnight
+        setInterval(() => {
+            const now = new Date();
+            if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0) {
+                setDailyBackground();
             }
-        });
+        }, 60000); // Check every minute if it's midnight
     </script>
 </body>
-</html>
+  </html>
